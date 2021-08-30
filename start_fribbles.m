@@ -47,8 +47,7 @@ PsychDebugWindowConfiguration([], 0.5)
 try
     % ---- open window ----
     % open a window and set its background color as gray
-    gray = WhiteIndex(screen_to_display) / 2;
-    [window_ptr, window_rect] = PsychImaging('OpenWindow', screen_to_display, 1);
+    [window_ptr, window_rect] = PsychImaging('OpenWindow', screen_to_display, WhiteIndex(screen_to_display));
     % disable character input and hide mouse cursor
     ListenChar(2);
     HideCursor;
@@ -80,6 +79,13 @@ try
         stim_txtrs{i_file} = Screen('MakeTexture', window_ptr, cur_stim);
         stim_sizes{i_file} = size(cur_stim);
     end
+    img_crown = imread(fullfile('config', 'crown.jpg'));
+    feedback_texture = Screen('MakeTexture', window_ptr, img_crown);
+    size_crown = size(img_crown);
+    [xcenter, ycenter] = RectCenter(window_rect);
+    xpixels = RectWidth(window_rect);
+    distance = 0.3 * xpixels;
+    stim_width = 0.15 * xpixels;
     
     % ---- present stimuli ----
     % display welcome screen and wait for a press of 's' to start
@@ -122,7 +128,17 @@ try
         vbl = Screen('Flip', window_ptr);
         stim_onset_timestamp = vbl;
         for i = 1:num_frames
-            draw_stimuli(cur_trial, stim_txtrs, stim_sizes, window_ptr, window_rect, 'hide_crown')
+            draw_stimuli(cur_trial, 'hide_crown')
+            if args.Part == "prac"
+                switch args.Phase
+                    case "encoding"
+                        DrawFormattedText(window_ptr, double('谁跑得更快?'), ...
+                            'center', ycenter + stim_width);
+                    case "retrieval"
+                        DrawFormattedText(window_ptr, double('此时仔细观察，不要操作'), ...
+                            'center', ycenter + stim_width);
+                end
+            end
             Screen('DrawingFinished', window_ptr);
             [resp_made, resp_timestamp, resp_code] = KbCheck(-1);
             if resp_code(keys.exit)
@@ -142,7 +158,17 @@ try
         vbl = Screen('Flip', window_ptr);
         stim_onset_timestamp = vbl;
         for i = 1:num_frames
-            draw_stimuli(cur_trial, stim_txtrs, stim_sizes, window_ptr, window_rect, 'show_crown')
+            draw_stimuli(cur_trial, 'show_crown')
+            if args.Part == "prac"
+                switch args.Phase
+                    case "encoding"
+                        DrawFormattedText(window_ptr, double('顶上有皇冠的表示跑得更快'), ...
+                            'center', ycenter + stim_width);
+                    case "retrieval"
+                        DrawFormattedText(window_ptr, double('请判断皇冠是否佩戴正确？'), ...
+                            'center', ycenter + stim_width);
+                end
+            end
             Screen('DrawingFinished', window_ptr);
             [resp_made, resp_timestamp, resp_code] = KbCheck(-1);
             if resp_code(keys.exit)
@@ -193,40 +219,33 @@ ShowCursor;
 Screen('Preference', 'VisualDebugLevel', old_visdb);
 Screen('Preference', 'SkipSyncTests', old_sync);
 Priority(old_pri);
-end
 
-function draw_stimuli(config, stim_txtrs, stim_sizes, window_ptr, window_rect, feedback)
-draw_fribble(stim_txtrs{config.stim_id_left}, stim_sizes{config.stim_id_left}, ...
-    window_ptr, window_rect, 'left', feedback == "show_crown" && config.crown_side == "Left")
-draw_fribble(stim_txtrs{config.stim_id_right}, stim_sizes{config.stim_id_right}, ...
-    window_ptr, window_rect, 'right', feedback == "show_crown" && config.crown_side == "Right")
-end
+    function draw_stimuli(config, feedback)
+        draw_fribble(stim_txtrs{config.stim_id_left}, stim_sizes{config.stim_id_left}, ...
+            'left', feedback == "show_crown" && config.crown_side == "Left")
+        draw_fribble(stim_txtrs{config.stim_id_right}, stim_sizes{config.stim_id_right}, ...
+            'right', feedback == "show_crown" && config.crown_side == "Right")
+    end
 
-function draw_fribble(texture, texture_size, window_ptr, window_rect, side, feedback)
-[xcenter, ycenter] = RectCenter(window_rect);
-xpixels = RectWidth(window_rect);
-distance = 0.3 * xpixels;
-stim_width = 0.15 * xpixels;
-switch side
-    case 'left'
-        stim_center_x = xcenter - distance / 2;
-    case 'right'
-        stim_center_x = xcenter + distance / 2;
-end
-stim_scale = stim_width / texture_size(2);
-dest_rect = CenterRectOnPoint( ...
-    [0, 0, floor(texture_size(2:-1:1) * stim_scale)], ...
-    stim_center_x, ycenter);
-Screen('DrawTexture', window_ptr, texture, [], dest_rect)
-if feedback
-    img_crown = imread(fullfile('config', 'crown.jpg'));
-    feedback_texture = Screen('MakeTexture', window_ptr, img_crown);
-    size_crown = size(img_crown);
-    feedback_scale = stim_width / texture_size(2);
-    feedback_center_y = ycenter - stim_width;
-    feedback_rect = CenterRectOnPoint( ...
-        [0, 0, floor(size_crown(2:-1:1) * feedback_scale)], ...
-        stim_center_x, feedback_center_y);
-    Screen('DrawTexture', window_ptr, feedback_texture, [], feedback_rect)
-end
+    function draw_fribble(texture, texture_size, side, feedback)
+        switch side
+            case 'left'
+                stim_center_x = xcenter - distance / 2;
+            case 'right'
+                stim_center_x = xcenter + distance / 2;
+        end
+        stim_scale = stim_width / texture_size(2);
+        dest_rect = CenterRectOnPoint( ...
+            [0, 0, floor(texture_size(2:-1:1) * stim_scale)], ...
+            stim_center_x, ycenter);
+        Screen('DrawTexture', window_ptr, texture, [], dest_rect)
+        if feedback
+            feedback_scale = stim_width / texture_size(2);
+            feedback_center_y = ycenter - stim_width;
+            feedback_rect = CenterRectOnPoint( ...
+                [0, 0, floor(size_crown(2:-1:1) * feedback_scale)], ...
+                stim_center_x, feedback_center_y);
+            Screen('DrawTexture', window_ptr, feedback_texture, [], feedback_rect)
+        end
+    end
 end
