@@ -140,6 +140,7 @@ try
         % trial part 3: feedback
         num_frames = round(time_feedback_secs / ifi);
         vbl = Screen('Flip', window_ptr);
+        stim_onset_timestamp = vbl;
         for i = 1:num_frames
             draw_stimuli(cur_trial, stim_txtrs, stim_sizes, window_ptr, window_rect, 'show_crown')
             Screen('DrawingFinished', window_ptr);
