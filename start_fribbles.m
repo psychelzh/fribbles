@@ -125,7 +125,9 @@ try
         cur_trial = config(i_trial, :);
         num_frames = round(time_stimuli_secs_max / ifi);
         vbl = Screen('Flip', window_ptr);
-        stim_onset_timestamp = vbl;
+        if args.Phase == "encoding"
+            stim_onset_timestamp = vbl;
+        end
         for i = 1:num_frames
             draw_stimuli(cur_trial, 'hide_crown')
             if args.Part == "prac"
@@ -152,10 +154,15 @@ try
             vbl = Screen('Flip', window_ptr, vbl + 0.5 * ifi);
         end
         if early_exit, break, end
+        if args.Phase == "encoding"
+            [resp, resp_raw, resp_time] = analyze_response();
+        end
         % trial part 3: feedback
         num_frames = round(time_feedback_secs / ifi);
         vbl = Screen('Flip', window_ptr);
-        stim_onset_timestamp = vbl;
+        if args.Phase == "retrieval"
+            stim_onset_timestamp = vbl;
+        end
         for i = 1:num_frames
             draw_stimuli(cur_trial, 'show_crown')
             if args.Part == "prac"
@@ -182,24 +189,8 @@ try
             vbl = Screen('Flip', window_ptr, vbl + 0.5 * ifi);
         end
         if early_exit, break, end
-        % analyze user's response
-        if ~resp_made
-            resp = "";
-            resp_raw = "";
-            resp_time = 0;
-        else
-            resp_time = resp_timestamp - stim_onset_timestamp;
-            % use "|" as delimiter for the KeyName of "|" is "\\"
-            resp_raw = string(strjoin(cellstr(KbName(resp_code)), '|'));
-            if ~resp_code(keys.left) && ~resp_code(keys.right)
-                resp = "Neither";
-            elseif resp_code(keys.left) && resp_code(keys.right)
-                resp = "Both";
-            elseif resp_code(keys.left)
-                resp = "Left";
-            else
-                resp = "Right";
-            end
+        if args.Phase == "retrieval"
+            [resp, resp_raw, resp_time] = analyze_response();
         end
         % record user's response
         recordings.resp(i_trial) = resp;
@@ -245,6 +236,27 @@ Priority(old_pri);
                 [0, 0, floor(size_crown(2:-1:1) * feedback_scale)], ...
                 stim_center_x, feedback_center_y);
             Screen('DrawTexture', window_ptr, feedback_texture, [], feedback_rect)
+        end
+    end
+
+    function [resp, resp_raw, resp_time] = analyze_response()
+        if ~resp_made
+            resp = "";
+            resp_raw = "";
+            resp_time = 0;
+        else
+            resp_time = resp_timestamp - stim_onset_timestamp;
+            % use "|" as delimiter for the KeyName of "|" is "\\"
+            resp_raw = string(strjoin(cellstr(KbName(resp_code)), '|'));
+            if ~resp_code(keys.left) && ~resp_code(keys.right)
+                resp = "Neither";
+            elseif resp_code(keys.left) && resp_code(keys.right)
+                resp = "Both";
+            elseif resp_code(keys.left)
+                resp = "Left";
+            else
+                resp = "Right";
+            end
         end
     end
 end
