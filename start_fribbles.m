@@ -42,7 +42,6 @@ old_visdb = Screen('Preference', 'VisualDebugLevel', 1);
 old_sync = Screen('Preference', 'SkipSyncTests', 0);
 % set priority to the top
 old_pri = Priority(MaxPriority(screen_to_display));
-PsychDebugWindowConfiguration([], 0.5)
 
 try
     % ---- open window ----
@@ -56,17 +55,17 @@ try
     % set default font name and size
     Screen('TextFont', window_ptr, 'SimHei');
     Screen('TextSize', window_ptr, 64);
-    
+
     % ---- timing information ----
     % get inter flip interval
     ifi = Screen('GetFlipInterval', window_ptr);
-    
+
     % ---- keyboard settings ----
     keys.start = KbName('space');
     keys.exit = KbName('Escape');
     keys.left = KbName('f');
     keys.right = KbName('j');
-    
+
     % ---- prepare stimuli ----
     files_stim = dir(fullfile('stimuli', '*.png'));
     n_stims = length(files_stim);
@@ -86,7 +85,7 @@ try
     xpixels = RectWidth(window_rect);
     distance = 0.3 * xpixels;
     stim_width = 0.15 * xpixels;
-    
+
     % ---- present stimuli ----
     % display welcome screen and wait for a press of 's' to start
     instr = strjoin(readlines( ...
