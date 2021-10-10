@@ -67,6 +67,9 @@ try
     keys.exit = KbName('Escape');
     keys.left = KbName('f');
     keys.right = KbName('j');
+    keys.correct = KbName('c');
+    keys.incorrect = KbName('n');
+    keys.control = KbName('g');
 
     % ---- prepare stimuli ----
     files_stim = dir(fullfile('stimuli', '*.png'));
