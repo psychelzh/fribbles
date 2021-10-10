@@ -3,6 +3,7 @@ function config = init_config(args)
 
 arguments
     args.Part {mustBeMember(args.Part, ["prac", "test"])} = "prac"
+    args.Treat {mustBeMember(args.Treat, ["exp", "ctrl"])} = "exp"
     args.Phase {mustBeMember(args.Phase, ["encoding", "retrieval"])} = "encoding"
 end
 
@@ -14,7 +15,7 @@ switch args.Part
         num_trials = 6;
     case "test"
         % fix random seed for each phase of task
-        rng(sum(char(args.Phase)))
+        rng(sum(char(args.Treat + args.Phase)))
         num_blocks = 5;
         num_trials = 60;
 end
@@ -32,14 +33,15 @@ config = table();
 config.block_id = repelem(1:num_blocks, num_trials / num_blocks)';
 config.trial_id = (1:num_trials)';
 stims = datasample(stim_pairs, num_trials, 'Replace', false);
-sides = ["Left", "Right"]';
+sides = ["left", "right"]';
 stims.win_side = sides((stims.speed_left < stims.speed_right) + 1);
 if args.Phase == "encoding"
     stims.crown_side = sides((stims.speed_left < stims.speed_right) + 1);
     stims.cresp = stims.win_side;
 else
     stims.crown_side = datasample(sides, height(stims));
-    stims.cresp = sides((stims.win_side ~= stims.crown_side) + 1);
+    resps = ["incorrect", "correct"]';
+    stims.cresp = resps((stims.win_side == stims.crown_side) + 1);
 end
 config = horzcat(config, stims);
 rng('default')

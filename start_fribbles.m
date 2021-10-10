@@ -4,6 +4,7 @@ function [recordings, status, exception] = start_fribbles(args)
 arguments
     % set experiment part, i.e., practice or testing
     args.Part {mustBeMember(args.Part, ["prac", "test"])} = "prac"
+    args.Treat {mustBeMember(args.Treat, ["exp", "ctrl"])} = "exp"
     args.Phase {mustBeMember(args.Phase, ["encoding", "retrieval"])} = "encoding"
 end
 
@@ -23,6 +24,15 @@ time_stimuli_secs_min = 0.5;
 time_stimuli_secs_max = 3;
 % feedback duration
 time_feedback_secs = 2.5;
+
+% ---- prepare valid keys ----
+if args.Treat == "exp" && args.Phase == "encoding"
+    keys_valid = {'left', 'right'};
+elseif args.Treat == "exp" && args.Phase == "retrieval"
+    keys_valid = {'correct', 'incorrect'};
+else
+    keys_valid = {'left', 'right', 'control'};
+end
 
 % ----prepare data recording table ----
 recordings = config;
@@ -63,13 +73,14 @@ try
     ifi = Screen('GetFlipInterval', window_ptr);
 
     % ---- keyboard settings ----
-    keys.start = KbName('space');
-    keys.exit = KbName('Escape');
-    keys.left = KbName('f');
-    keys.right = KbName('j');
-    keys.correct = KbName('c');
-    keys.incorrect = KbName('n');
-    keys.control = KbName('g');
+    keys = containers.Map('KeyType', 'char', 'ValueType', 'double');
+    keys('start') = KbName('space');
+    keys('exit') = KbName('Escape');
+    keys('left') = KbName('f');
+    keys('right') = KbName('j');
+    keys('correct') = KbName('c');
+    keys('incorrect') = KbName('n');
+    keys('control') = KbName('g');
 
     % ---- prepare stimuli ----
     files_stim = dir(fullfile('stimuli', '*.png'));
@@ -92,7 +103,7 @@ try
     % ---- present stimuli ----
     % display welcome screen and wait for a press of 's' to start
     instr = strjoin(readlines( ...
-        fullfile('config', strcat('instr_', args.Phase, '.txt')), ...
+        fullfile('config', sprintf('instr_%s_%s.txt', args.Treat, args.Phase)), ...
         'EmptyLineRule', 'skip'), '\n');
     DrawFormattedText(window_ptr, double(char(instr)), 'center', 'center');
     Screen('Flip', window_ptr);
@@ -101,9 +112,9 @@ try
     % here we should detect for a key press and release
     while true
         [~, resp_code] = KbStrokeWait(-1);
-        if resp_code(keys.start)
+        if resp_code(keys('start'))
             break
-        elseif resp_code(keys.exit)
+        elseif resp_code(keys('exit'))
             early_exit = true;
             break
         end
@@ -117,7 +128,7 @@ try
             DrawFormattedText(window_ptr, '+', 'center', 'center', [0, 0, 0]);
             Screen('DrawingFinished', window_ptr);
             [~, ~, resp_code] = KbCheck(-1);
-            if resp_code(keys.exit)
+            if resp_code(keys('exit'))
                 early_exit = true;
                 break
             end
@@ -136,7 +147,7 @@ try
             if args.Part == "prac"
                 switch args.Phase
                     case "encoding"
-                        DrawFormattedText(window_ptr, double('谁跑得更快?'), ...
+                        DrawFormattedText(window_ptr, double('谁跑得更快?左侧按F，右侧按J'), ...
                             'center', ycenter + stim_width);
                     case "retrieval"
                         DrawFormattedText(window_ptr, double('此时仔细观察，不要操作'), ...
@@ -145,7 +156,7 @@ try
             end
             Screen('DrawingFinished', window_ptr);
             [resp_made, resp_timestamp, resp_code] = KbCheck(-1);
-            if resp_code(keys.exit)
+            if resp_code(keys('exit'))
                 early_exit = true;
                 break
             end
@@ -174,13 +185,13 @@ try
                         DrawFormattedText(window_ptr, double('顶上有皇冠的表示跑得更快'), ...
                             'center', ycenter + stim_width);
                     case "retrieval"
-                        DrawFormattedText(window_ptr, double('请判断皇冠是否佩戴正确？正确按f，错误按j'), ...
+                        DrawFormattedText(window_ptr, double('请判断皇冠是否佩戴正确？正确按C，错误按N'), ...
                             'center', ycenter + stim_width);
                 end
             end
             Screen('DrawingFinished', window_ptr);
             [resp_made, resp_timestamp, resp_code] = KbCheck(-1);
-            if resp_code(keys.exit)
+            if resp_code(keys('exit'))
                 early_exit = true;
                 break
             end
@@ -215,9 +226,9 @@ Priority(old_pri);
 
     function draw_stimuli(config, feedback)
         draw_fribble(stim_txtrs{config.stim_id_left}, stim_sizes{config.stim_id_left}, ...
-            'left', feedback == "show_crown" && config.crown_side == "Left")
+            'left', feedback == "show_crown" && config.crown_side == "left")
         draw_fribble(stim_txtrs{config.stim_id_right}, stim_sizes{config.stim_id_right}, ...
-            'right', feedback == "show_crown" && config.crown_side == "Right")
+            'right', feedback == "show_crown" && config.crown_side == "right")
     end
 
     function draw_fribble(texture, texture_size, side, feedback)
@@ -251,14 +262,13 @@ Priority(old_pri);
             resp_time = resp_timestamp - stim_onset_timestamp;
             % use "|" as delimiter for the KeyName of "|" is "\\"
             resp_raw = string(strjoin(cellstr(KbName(resp_code)), '|'));
-            if ~resp_code(keys.left) && ~resp_code(keys.right)
-                resp = "Neither";
-            elseif resp_code(keys.left) && resp_code(keys.right)
-                resp = "Both";
-            elseif resp_code(keys.left)
-                resp = "Left";
+            resp_codes_valid = cellfun(@(x) x, values(keys, keys_valid));
+            resp_codes = find(resp_code);
+            resp_idx = ismember(resp_codes_valid, resp_codes);
+            if sum(resp_idx) == 1 && length(resp_codes) == 1
+                resp = string(keys_valid{resp_idx});
             else
-                resp = "Right";
+                resp = "invalid";
             end
         end
     end
