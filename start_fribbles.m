@@ -47,6 +47,8 @@ try
     % ---- open window ----
     % open a window and set its background color as gray
     [window_ptr, window_rect] = PsychImaging('OpenWindow', screen_to_display, WhiteIndex(screen_to_display));
+    [xcenter, ycenter] = RectCenter(window_rect);
+    xpixels = RectWidth(window_rect);
     % disable character input and hide mouse cursor
     ListenChar(2);
     HideCursor;
@@ -54,7 +56,7 @@ try
     Screen('BlendFunction', window_ptr, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     % set default font name and size
     Screen('TextFont', window_ptr, 'SimHei');
-    Screen('TextSize', window_ptr, 64);
+    Screen('TextSize', window_ptr, floor(xpixels * 0.03));
 
     % ---- timing information ----
     % get inter flip interval
@@ -81,8 +83,6 @@ try
     img_crown = imread(fullfile('config', 'crown.jpg'));
     feedback_texture = Screen('MakeTexture', window_ptr, img_crown);
     size_crown = size(img_crown);
-    [xcenter, ycenter] = RectCenter(window_rect);
-    xpixels = RectWidth(window_rect);
     distance = 0.3 * xpixels;
     stim_width = 0.15 * xpixels;
 
