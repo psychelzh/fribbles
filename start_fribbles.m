@@ -7,6 +7,9 @@ arguments
     args.Treat {mustBeMember(args.Treat, ["exp", "ctrl"])} = "exp"
     args.Phase {mustBeMember(args.Phase, ["encoding", "retrieval"])} = "encoding"
 end
+part = args.Part;
+treat = args.Treat;
+phase = args.Phase;
 
 % ---- prepare sequences ----
 args_cell = namedargs2cell(args);
@@ -21,14 +24,20 @@ exception = [];
 time_fixation_secs = 1;
 % stimuli duration
 time_stimuli_secs_min = 0.5;
-time_stimuli_secs_max = 3;
+if treat == "exp"
+    time_stimuli_secs_max = 3;
+else
+    time_stimuli_secs_max = 2.5;
+end
+% post-stimuli duration
+time_poststim_secs = 2.5;
 % feedback duration
-time_feedback_secs = 2.5;
+time_feedback_secs = 0.5;
 
 % ---- prepare valid keys ----
-if args.Treat == "exp" && args.Phase == "encoding"
+if treat == "exp" && phase == "encoding"
     keys_valid = {'left', 'right'};
-elseif args.Treat == "exp" && args.Phase == "retrieval"
+elseif treat == "exp" && phase == "retrieval"
     keys_valid = {'correct', 'incorrect'};
 else
     keys_valid = {'left', 'right', 'control'};
@@ -103,7 +112,7 @@ try
     % ---- present stimuli ----
     % display welcome screen and wait for a press of 's' to start
     instr = strjoin(readlines( ...
-        fullfile('config', sprintf('instr_%s_%s.txt', args.Treat, args.Phase)), ...
+        fullfile('config', sprintf('instr_%s_%s.txt', treat, phase)), ...
         'EmptyLineRule', 'skip'), '\n');
     DrawFormattedText(window_ptr, double(char(instr)), 'center', 'center');
     Screen('Flip', window_ptr);
@@ -139,20 +148,19 @@ try
         cur_trial = config(i_trial, :);
         num_frames = round(time_stimuli_secs_max / ifi);
         vbl = Screen('Flip', window_ptr);
-        if args.Phase == "encoding"
+        if treat == "exp" && phase == "encoding"
             stim_onset_timestamp = vbl;
         end
         for i = 1:num_frames
             draw_stimuli(cur_trial, 'hide_crown')
-            if args.Part == "prac"
-                switch args.Phase
-                    case "encoding"
-                        DrawFormattedText(window_ptr, double('谁跑得更快?左侧按F，右侧按J'), ...
-                            'center', ycenter + stim_width);
-                    case "retrieval"
-                        DrawFormattedText(window_ptr, double('此时仔细观察，不要操作'), ...
-                            'center', ycenter + stim_width);
+            if part == "prac"
+                if treat == "exp" && phase == "encoding"
+                    fb_text = '谁跑得更快?左侧按F，右侧按J';
+                else
+                    fb_text = '此时仔细观察，不要操作';
                 end
+                DrawFormattedText(window_ptr, double(fb_text), ...
+                    'center', ycenter + stim_width);
             end
             Screen('DrawingFinished', window_ptr);
             [resp_made, resp_timestamp, resp_code] = KbCheck(-1);
@@ -160,7 +168,7 @@ try
                 early_exit = true;
                 break
             end
-            if args.Phase == "encoding"
+            if treat == "exp" && phase == "encoding"
                 if resp_made && i * ifi >= time_stimuli_secs_min
                     break
                 end
@@ -168,25 +176,39 @@ try
             vbl = Screen('Flip', window_ptr, vbl + 0.5 * ifi);
         end
         if early_exit, break, end
-        if args.Phase == "encoding"
+        if treat == "exp" && phase == "encoding"
             [resp, resp_raw, resp_time] = analyze_response();
         end
-        % trial part 3: feedback
-        num_frames = round(time_feedback_secs / ifi);
+        % trial part 3: post stimuli phase
+        num_frames = round(time_poststim_secs / ifi);
         vbl = Screen('Flip', window_ptr);
-        if args.Phase == "retrieval"
+        if ~(treat == "exp" && phase == "encoding")
             stim_onset_timestamp = vbl;
         end
         for i = 1:num_frames
-            draw_stimuli(cur_trial, 'show_crown')
-            if args.Part == "prac"
-                switch args.Phase
-                    case "encoding"
-                        DrawFormattedText(window_ptr, double('顶上有皇冠的表示跑得更快'), ...
+            if treat == "exp"
+                draw_stimuli(cur_trial, 'show_crown')
+            end
+            if part == "prac"
+                switch treat
+                    case "exp"
+                        switch phase
+                            case "encoding"
+                                fb_text = '顶上有皇冠的表示跑得更快';
+                            case "retrieval"
+                                fb_text = '请判断皇冠是否佩戴正确？正确按C，错误按N';
+                        end
+                        DrawFormattedText(window_ptr, double(fb_text), ...
                             'center', ycenter + stim_width);
-                    case "retrieval"
-                        DrawFormattedText(window_ptr, double('请判断皇冠是否佩戴正确？正确按C，错误按N'), ...
-                            'center', ycenter + stim_width);
+                    case "ctrl"
+                        switch phase
+                            case "encoding"
+                                fb_text = '请操作\n无△时左侧快按F，右侧快按J；有△时按G';
+                            case "retrieval"
+                                fb_text = '请操作\n见过按F，没见过按J，不确定按G';
+                        end
+                        DrawFormattedText(window_ptr, double(fb_text), ...
+                            'center', 'center');
                 end
             end
             Screen('DrawingFinished', window_ptr);
@@ -195,7 +217,7 @@ try
                 early_exit = true;
                 break
             end
-            if args.Phase == "retrieval"
+            if ~(treat == "exp" && phase == "encoding")
                 if resp_made
                     break
                 end
@@ -203,7 +225,7 @@ try
             vbl = Screen('Flip', window_ptr, vbl + 0.5 * ifi);
         end
         if early_exit, break, end
-        if args.Phase == "retrieval"
+        if ~(treat == "exp" && phase == "encoding")
             [resp, resp_raw, resp_time] = analyze_response();
         end
         % record user's response
@@ -211,6 +233,32 @@ try
         recordings.resp_raw(i_trial) = resp_raw;
         recordings.acc(i_trial) = resp == cur_trial.cresp;
         recordings.rt(i_trial) = resp_time;
+        % trial part 4: feedback phase for practice only
+        if part == "prac"
+            num_frames = round(time_feedback_secs / ifi);
+            vbl = Screen('Flip', window_ptr);
+            for i = 1:num_frames
+                if resp ~= ""
+                    if resp == cur_trial.cresp
+                        fb_text = '很棒！回答正确';
+                    else
+                        fb_text = '回答不正确';
+                    end
+                else
+                    fb_text = '超时了，请及时作答';
+                end
+                DrawFormattedText(window_ptr, double(fb_text), ...
+                    'center', 'center', [1, 0, 0]);
+                Screen('DrawingFinished', window_ptr);
+                [resp_made, resp_timestamp, resp_code] = KbCheck(-1);
+                if resp_code(keys('exit'))
+                    early_exit = true;
+                    break
+                end
+                vbl = Screen('Flip', window_ptr, vbl + 0.5 * ifi);
+            end
+            if early_exit, break, end
+        end
     end
 catch exception
     status = 1;
@@ -225,10 +273,25 @@ Screen('Preference', 'SkipSyncTests', old_sync);
 Priority(old_pri);
 
     function draw_stimuli(config, feedback)
+        if treat == "exp"
+            crown_side = config.crown_side;
+        else
+            crown_side = "";
+        end
         draw_fribble(stim_txtrs{config.stim_id_left}, stim_sizes{config.stim_id_left}, ...
-            'left', feedback == "show_crown" && config.crown_side == "left")
+            'left', feedback == "show_crown" && crown_side == "left")
         draw_fribble(stim_txtrs{config.stim_id_right}, stim_sizes{config.stim_id_right}, ...
-            'right', feedback == "show_crown" && config.crown_side == "right")
+            'right', feedback == "show_crown" && crown_side == "right")
+        if treat == "ctrl"
+            DrawFormattedText(window_ptr, double(char(config.text_tip)), 'center', 'center');
+            if (phase == "encoding" && config.is_ctrl_enc) || ...
+                    (phase == "retrieval" && config.is_ctrl_ret)
+                Screen('FillPoly', window_ptr, [0, 0, 1], ...
+                    [xcenter - stim_width / 4, ycenter - stim_width / 2; ...
+                    xcenter + stim_width / 4, ycenter - stim_width / 2; ...
+                    xcenter, ycenter - (1 / 2 + sqrt(3) / 4) * stim_width]);
+            end
+        end
     end
 
     function draw_fribble(texture, texture_size, side, feedback)
@@ -249,7 +312,7 @@ Priority(old_pri);
             feedback_rect = CenterRectOnPoint( ...
                 [0, 0, floor(size_crown(2:-1:1) * feedback_scale)], ...
                 stim_center_x, feedback_center_y);
-            Screen('DrawTexture', window_ptr, feedback_texture, [], feedback_rect)
+            Screen('DrawTexture', window_ptr, feedback_texture, [], feedback_rect);
         end
     end
 
