@@ -20,6 +20,7 @@ end
 % --- prepare for trigger ---
 if send_trigger
     ioObj = io64;
+    io64(ioObj);
     address = hex2dec('C100');
 end
 
