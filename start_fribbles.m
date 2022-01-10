@@ -227,7 +227,7 @@ try
                 if resp == ""
                     code = 3;
                 else
-                    code = resp ~= cur_trial.cresp + 1;
+                    code = (resp ~= cur_trial.cresp) + 1;
                 end
                 % send trigger: stimuli offset or response made (encoding)
                 io64(ioObj, address, 12);
@@ -323,7 +323,7 @@ try
                     if resp == ""
                         code = 3;
                     else
-                        code = resp ~= cur_trial.cresp + 1;
+                        code = (resp ~= cur_trial.cresp) + 1;
                     end
                     % send trigger: stimuli offset or response made (retrieval)
                     io64(ioObj, address, 24);
